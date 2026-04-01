@@ -1,0 +1,45 @@
+name: Run Harbor Eval
+
+on:
+  workflow_dispatch: # manual trigger
+  # Uncomment to run on push or schedule:
+  # push:
+  #   branches: [main]
+  # schedule:
+  #   - cron: "0 6 * * *" # daily at 6am UTC
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run Harbor eval in Modal
+        id: eval
+        env:
+          # Modal auth — set these as GitHub repo secrets
+          MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+          MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
+          # Add any agent-specific keys here, e.g.:
+          # ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: uv run python run_eval.py
+
+      - name: Upload job artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: harbor-eval-results
+          path: jobs/ci-eval/
+          retention-days: 30
